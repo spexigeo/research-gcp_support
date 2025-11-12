@@ -41,7 +41,6 @@ ENV/
 
 # Output files
 *.csv
-*.txt
 *.xml
 *.shp
 *.shx
@@ -53,6 +52,14 @@ gcps/
 output/
 gcps_output/
 *.log
+
+# Text files (but keep important ones)
+*.txt
+!requirements.txt
+!README.md
+!USGS_API_NOTES.md
+!GIT_SETUP.md
+!input/input-file.manifest
 
 # Test output files (keep input manifest, ignore generated outputs)
 # Keep: input/input-file.manifest
