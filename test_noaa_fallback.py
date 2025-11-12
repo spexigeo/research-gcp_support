@@ -87,6 +87,13 @@ def test_noaa_fallback():
         
         gcps = finder.find_gcps(h3_cells=h3_cells, max_results=20, min_gcp_threshold=5)
         print(f"Result: Found {len(gcps)} total GCPs")
+        
+        # Display spatial distribution metrics if available
+        if finder.last_spatial_metrics and len(gcps) >= 2:
+            metrics = finder.last_spatial_metrics
+            print(f"  Spatial distribution metrics:")
+            print(f"    Spread score: {metrics.get('spread_score', 0):.3f}")
+            print(f"    Confidence score: {metrics.get('confidence_score', 0):.3f}")
         print()
         
         # Test 2: High threshold - should NOT trigger NOAA search
@@ -103,6 +110,13 @@ def test_noaa_fallback():
         
         gcps2 = finder2.find_gcps(h3_cells=h3_cells, max_results=20, min_gcp_threshold=5)
         print(f"Result: Found {len(gcps2)} total GCPs")
+        
+        # Display spatial distribution metrics if available
+        if finder2.last_spatial_metrics and len(gcps2) >= 2:
+            metrics = finder2.last_spatial_metrics
+            print(f"  Spatial distribution metrics:")
+            print(f"    Spread score: {metrics.get('spread_score', 0):.3f}")
+            print(f"    Confidence score: {metrics.get('confidence_score', 0):.3f}")
         print()
         
         # Test 3: Custom threshold in find_gcps call
@@ -111,6 +125,13 @@ def test_noaa_fallback():
         finder3 = GCPFinder(min_gcp_threshold=10)  # Default is 10
         gcps3 = finder3.find_gcps(h3_cells=h3_cells, max_results=20, min_gcp_threshold=15)
         print(f"Result: Found {len(gcps3)} total GCPs")
+        
+        # Display spatial distribution metrics if available
+        if finder3.last_spatial_metrics and len(gcps3) >= 2:
+            metrics = finder3.last_spatial_metrics
+            print(f"  Spatial distribution metrics:")
+            print(f"    Spread score: {metrics.get('spread_score', 0):.3f}")
+            print(f"    Confidence score: {metrics.get('confidence_score', 0):.3f}")
         print()
         
         print("=" * 70)

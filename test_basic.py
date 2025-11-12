@@ -127,13 +127,13 @@ def test_export_formats():
 
 
 def test_gcp_filtering():
-    """Test GCP filtering."""
-    print("Testing GCP filtering...")
+    """Test GCP filtering and spatial distribution."""
+    print("Testing GCP filtering and spatial distribution...")
     
     try:
-        from .gcp_filter import GCPFilter
+        from .gcp_filter import GCPFilter, calculate_spatial_distribution_score
     except ImportError:
-        from gcp_support.gcp_filter import GCPFilter
+        from gcp_support.gcp_filter import GCPFilter, calculate_spatial_distribution_score
     from shapely.geometry import Point, Polygon
     
     # Get bounding box from manifest H3 cells
@@ -146,7 +146,7 @@ def test_gcp_filtering():
     
     # Filter for high accuracy
     filter_obj = GCPFilter(min_accuracy=1.0)
-    filtered = filter_obj.filter_gcps(gcps)
+    filtered = filter_obj.filter_gcps(gcps, bbox=bbox)
     
     print(f"  Original: {len(gcps)} GCPs")
     print(f"  Filtered (accuracy <= 1.0m): {len(filtered)} GCPs")
@@ -156,7 +156,16 @@ def test_gcp_filtering():
         accuracy = gcp.get('accuracy', float('inf'))
         assert accuracy <= 1.0 or accuracy == float('inf'), "Filtered GCPs should meet accuracy requirement"
     
-    print("  ✓ GCP filtering works\n")
+    # Test spatial distribution scoring
+    if len(filtered) >= 2:
+        spatial_metrics = calculate_spatial_distribution_score(filtered, bbox)
+        print(f"  Spatial distribution metrics:")
+        print(f"    Spread score: {spatial_metrics.get('spread_score', 0):.3f}")
+        print(f"    Confidence score: {spatial_metrics.get('confidence_score', 0):.3f}")
+        print(f"    Convex hull ratio: {spatial_metrics.get('convex_hull_ratio', 0):.3f}")
+        print(f"    Grid coverage: {spatial_metrics.get('grid_coverage', 0):.3f}")
+    
+    print("  ✓ GCP filtering and spatial distribution works\n")
 
 
 def main():

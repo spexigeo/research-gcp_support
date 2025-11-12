@@ -67,6 +67,16 @@ def main():
         default=10,
         help='Minimum number of GCPs from USGS before searching NOAA (default: 10)'
     )
+    parser.add_argument(
+        '--min-spread-score',
+        type=float,
+        help='Minimum spatial spread score (0-1). If not set, only warns on poor distribution.'
+    )
+    parser.add_argument(
+        '--min-confidence-score',
+        type=float,
+        help='Minimum confidence score (0-1). If not set, only warns on poor distribution.'
+    )
     
     # USGS credentials (optional)
     parser.add_argument(
@@ -99,7 +109,9 @@ def main():
         usgs_password=args.usgs_password,
         noaa_api_key=args.noaa_api_key,
         min_accuracy=args.min_accuracy,
-        min_gcp_threshold=args.min_gcp_threshold
+        min_gcp_threshold=args.min_gcp_threshold,
+        min_spread_score=args.min_spread_score,
+        min_confidence_score=args.min_confidence_score
     )
     
     # Get bounding box

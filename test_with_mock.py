@@ -105,6 +105,13 @@ def main():
         gcps_from_finder = finder.find_gcps(h3_cells=h3_cells, max_results=20)
         print(f"Found {len(gcps_from_finder)} GCPs using GCPFinder")
         
+        # Display spatial distribution metrics if available
+        if finder.last_spatial_metrics and len(gcps_from_finder) >= 2:
+            metrics = finder.last_spatial_metrics
+            print(f"  Spatial distribution metrics:")
+            print(f"    Spread score: {metrics.get('spread_score', 0):.3f}")
+            print(f"    Confidence score: {metrics.get('confidence_score', 0):.3f}")
+        
         # Export
         finder.export_all(gcps_from_finder, output_dir, 'mock_h3')
         print(f"✓ Exported all formats to {output_dir}/mock_h3_*\n")
@@ -127,15 +134,58 @@ def main():
         
         # Filter for high accuracy (<= 1.0m)
         filter_obj = GCPFilter(min_accuracy=1.0)
-        filtered_gcps = filter_obj.filter_gcps(all_gcps)
+        filtered_gcps = filter_obj.filter_gcps(all_gcps, bbox=bbox)
         print(f"Filtered to {len(filtered_gcps)} GCPs with accuracy <= 1.0m")
+        
+        # Display spatial distribution metrics
+        if len(filtered_gcps) >= 2:
+            try:
+                from .gcp_filter import calculate_spatial_distribution_score
+            except ImportError:
+                from gcp_support.gcp_filter import calculate_spatial_distribution_score
+            
+            spatial_metrics = calculate_spatial_distribution_score(filtered_gcps, bbox)
+            print(f"  Spatial distribution metrics:")
+            print(f"    Spread score: {spatial_metrics.get('spread_score', 0):.3f} (0-1, higher is better)")
+            print(f"    Confidence score: {spatial_metrics.get('confidence_score', 0):.3f} (0-1, higher is better)")
+            print(f"    Convex hull ratio: {spatial_metrics.get('convex_hull_ratio', 0):.3f}")
+            print(f"    Grid coverage: {spatial_metrics.get('grid_coverage', 0):.3f}")
         
         # Export filtered results
         finder.export_all(filtered_gcps, output_dir, 'mock_filtered')
         print(f"✓ Exported filtered GCPs to {output_dir}/mock_filtered_*\n")
         
-        # Example 4: Show what files were created
-        print("Example 4: Generated files")
+        # Example 4: Test spatial distribution filtering
+        print("Example 4: Test spatial distribution filtering")
+        print("-" * 70)
+        
+        # Generate clustered GCPs (simulate poor distribution)
+        # Make them more clustered by using a smaller area in the center
+        center_lat = (bbox[0] + bbox[2]) / 2
+        center_lon = (bbox[1] + bbox[3]) / 2
+        small_bbox = (
+            center_lat - (bbox[2] - bbox[0]) * 0.1,
+            center_lon - (bbox[3] - bbox[1]) * 0.1,
+            center_lat + (bbox[2] - bbox[0]) * 0.1,
+            center_lon + (bbox[3] - bbox[1]) * 0.1
+        )
+        clustered_gcps = MockGCPGenerator.generate_gcps_in_bbox(small_bbox, count=15)
+        
+        # Test with spatial distribution filter
+        finder_with_filter = GCPFinder(min_confidence_score=0.5)
+        filtered_clustered = finder_with_filter.find_gcps(bbox=bbox, max_results=20)
+        
+        # Manually check distribution
+        spatial_metrics_clustered = calculate_spatial_distribution_score(clustered_gcps, bbox)
+        print(f"Clustered GCPs distribution:")
+        print(f"  Spread score: {spatial_metrics_clustered.get('spread_score', 0):.3f}")
+        print(f"  Confidence score: {spatial_metrics_clustered.get('confidence_score', 0):.3f}")
+        if spatial_metrics_clustered.get('confidence_score', 0) < 0.5:
+            print("  ⚠️  Warning: Poor spatial distribution detected!")
+        print()
+        
+        # Example 5: Show what files were created
+        print("Example 5: Generated files")
         print("-" * 70)
         files = [f for f in os.listdir(output_dir) if f.startswith('mock_')]
         for file in sorted(files):

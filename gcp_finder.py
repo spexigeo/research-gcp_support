@@ -25,7 +25,9 @@ class GCPFinder:
         noaa_api_key: Optional[str] = None,
         min_accuracy: float = 1.0,
         require_photo_identifiable: bool = True,
-        min_gcp_threshold: int = 10
+        min_gcp_threshold: int = 10,
+        min_spread_score: Optional[float] = None,
+        min_confidence_score: Optional[float] = None
     ):
         """
         Initialize GCP finder.
@@ -37,12 +39,17 @@ class GCPFinder:
             min_accuracy: Minimum geometric accuracy in meters
             require_photo_identifiable: Whether to require photo-identifiable GCPs
             min_gcp_threshold: Minimum number of GCPs from USGS before searching NOAA (default: 10)
+            min_spread_score: Minimum spatial spread score (0-1). If None, only warns.
+            min_confidence_score: Minimum confidence score (0-1). If None, only warns.
         """
         self.usgs_client = USGSGCPClient(username=usgs_username, password=usgs_password)
         self.noaa_client = NOAAGCPClient(api_key=noaa_api_key)
         self.min_accuracy = min_accuracy
         self.require_photo_identifiable = require_photo_identifiable
         self.min_gcp_threshold = min_gcp_threshold
+        self.min_spread_score = min_spread_score
+        self.min_confidence_score = min_confidence_score
+        self.last_spatial_metrics = None  # Store spatial metrics from last filter operation
     
     def h3_cells_to_bbox(self, h3_cells: List[str]) -> Tuple[float, float, float, float]:
         """
@@ -142,9 +149,23 @@ class GCPFinder:
         filter_obj = GCPFilter(
             min_accuracy=self.min_accuracy,
             require_photo_identifiable=self.require_photo_identifiable,
-            target_area=target_area
+            target_area=target_area,
+            min_spread_score=self.min_spread_score,
+            min_confidence_score=self.min_confidence_score
         )
-        filtered_gcps = filter_obj.filter_gcps(all_gcps)
+        filtered_gcps = filter_obj.filter_gcps(all_gcps, bbox=bbox)
+        
+        # Store spatial metrics for access later
+        self.last_spatial_metrics = getattr(filter_obj, 'last_spatial_metrics', None)
+        
+        # Print spatial distribution summary if available
+        if self.last_spatial_metrics and len(filtered_gcps) >= 2:
+            metrics = self.last_spatial_metrics
+            print(f"  Spatial distribution metrics:")
+            print(f"    Spread score: {metrics.get('spread_score', 0):.3f} (0-1, higher is better)")
+            print(f"    Confidence score: {metrics.get('confidence_score', 0):.3f} (0-1, higher is better)")
+            print(f"    Convex hull ratio: {metrics.get('convex_hull_ratio', 0):.3f}")
+            print(f"    Grid coverage: {metrics.get('grid_coverage', 0):.3f}")
         
         print(f"  Final filtered GCPs: {len(filtered_gcps)}")
         
