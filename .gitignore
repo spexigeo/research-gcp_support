@@ -32,6 +32,9 @@ ENV/
 *.swo
 *~
 
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
 # OS files
 .DS_Store
 .DS_Store?
