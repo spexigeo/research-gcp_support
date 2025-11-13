@@ -64,6 +64,10 @@ gcps_output/
 !GIT_SETUP.md
 !input/input-file.manifest
 
+# KMZ files (large, user-specific)
+*.kmz
+!input/input-file.manifest
+
 # Test output files (keep input manifest, ignore generated outputs)
 # Keep: input/input-file.manifest
 # Ignore: all generated test outputs

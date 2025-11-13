@@ -22,6 +22,7 @@ class GCPFinder:
         self,
         usgs_username: Optional[str] = None,
         usgs_password: Optional[str] = None,
+        usgs_application_token: Optional[str] = None,
         noaa_api_key: Optional[str] = None,
         min_accuracy: float = 1.0,
         require_photo_identifiable: bool = True,
@@ -33,16 +34,21 @@ class GCPFinder:
         Initialize GCP finder.
         
         Args:
-            usgs_username: USGS EarthExplorer username (optional)
-            usgs_password: USGS EarthExplorer password (optional)
-            noaa_api_key: NOAA API key (optional)
+            usgs_username: USGS EarthExplorer username (DEPRECATED - use usgs_application_token)
+            usgs_password: USGS EarthExplorer password (DEPRECATED - use usgs_application_token)
+            usgs_application_token: USGS application token (NEW METHOD - recommended)
+            noaa_api_key: NOAA API key (optional, currently not required for NGS archive)
             min_accuracy: Minimum geometric accuracy in meters
             require_photo_identifiable: Whether to require photo-identifiable GCPs
             min_gcp_threshold: Minimum number of GCPs from USGS before searching NOAA (default: 10)
             min_spread_score: Minimum spatial spread score (0-1). If None, only warns.
             min_confidence_score: Minimum confidence score (0-1). If None, only warns.
         """
-        self.usgs_client = USGSGCPClient(username=usgs_username, password=usgs_password)
+        self.usgs_client = USGSGCPClient(
+            username=usgs_username, 
+            password=usgs_password,
+            application_token=usgs_application_token
+        )
         self.noaa_client = NOAAGCPClient(api_key=noaa_api_key)
         self.min_accuracy = min_accuracy
         self.require_photo_identifiable = require_photo_identifiable

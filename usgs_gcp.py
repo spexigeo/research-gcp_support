@@ -20,18 +20,104 @@ class USGSGCPClient:
     
     BASE_URL = "https://earthexplorer.usgs.gov/inventory/json/v/1.4.1"
     
-    def __init__(self, username: Optional[str] = None, password: Optional[str] = None):
+    def __init__(
+        self, 
+        username: Optional[str] = None, 
+        password: Optional[str] = None,
+        application_token: Optional[str] = None
+    ):
         """
         Initialize USGS GCP client.
         
         Args:
-            username: USGS EarthExplorer username (optional, may be required for some endpoints)
-            password: USGS EarthExplorer password (optional)
+            username: USGS EarthExplorer username (DEPRECATED - use application_token instead)
+            password: USGS EarthExplorer password (DEPRECATED - use application_token instead)
+            application_token: USGS application token (NEW METHOD - recommended)
         """
         self.username = username
         self.password = password
+        self.application_token = application_token
         self.session = requests.Session()
         self.api_key = None
+        
+        # Authenticate if credentials provided
+        # Prefer token authentication (new method)
+        if application_token:
+            self.api_key = self._authenticate_with_token()
+        elif username and password:
+            print("Warning: Username/password authentication is deprecated.")
+            print("Please use application_token instead. See USGS_API_NOTES.md")
+            self.api_key = self._authenticate()
+    
+    def _authenticate_with_token(self) -> Optional[str]:
+        """
+        Authenticate with USGS EarthExplorer using application token (new method).
+        
+        Returns:
+            API key if successful, None otherwise
+        """
+        login_url = f"{self.BASE_URL}/login-token"
+        
+        login_data = {
+            "applicationToken": self.application_token
+        }
+        
+        try:
+            response = self.session.post(login_url, json=login_data, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get("errorCode"):
+                print(f"USGS token authentication failed: {result.get('errorMessage', 'Unknown error')}")
+                return None
+            
+            api_key = result.get("data")
+            if api_key:
+                return api_key
+            else:
+                print("USGS token authentication failed: No API key returned")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            print(f"USGS token authentication error: {e}")
+            return None
+    
+    def _authenticate(self) -> Optional[str]:
+        """
+        Authenticate with USGS EarthExplorer and get API key.
+        
+        Returns:
+            API key if successful, None otherwise
+        """
+        login_url = f"{self.BASE_URL}/login"
+        
+        login_data = {
+            "username": self.username,
+            "password": self.password,
+            "catalogId": "EE"
+        }
+        
+        try:
+            response = self.session.post(login_url, json=login_data, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get("errorCode"):
+                print(f"USGS authentication failed: {result.get('errorMessage', 'Unknown error')}")
+                return None
+            
+            api_key = result.get("data")
+            if api_key:
+                return api_key
+            else:
+                print("USGS authentication failed: No API key returned")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            print(f"USGS authentication error: {e}")
+            return None
     
     def _make_request(self, endpoint: str, params: Dict) -> Dict:
         """Make a request to the USGS API."""

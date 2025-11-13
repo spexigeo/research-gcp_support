@@ -80,12 +80,16 @@ def main():
     
     # USGS credentials (optional)
     parser.add_argument(
+        '--usgs-application-token',
+        help='USGS application token (NEW METHOD - recommended, see USGS_API_NOTES.md)'
+    )
+    parser.add_argument(
         '--usgs-username',
-        help='USGS EarthExplorer username'
+        help='USGS EarthExplorer username (DEPRECATED - use --usgs-application-token)'
     )
     parser.add_argument(
         '--usgs-password',
-        help='USGS EarthExplorer password'
+        help='USGS EarthExplorer password (DEPRECATED - use --usgs-application-token)'
     )
     
     # NOAA credentials (optional)
@@ -107,6 +111,7 @@ def main():
     finder = GCPFinder(
         usgs_username=args.usgs_username,
         usgs_password=args.usgs_password,
+        usgs_application_token=args.usgs_application_token,
         noaa_api_key=args.noaa_api_key,
         min_accuracy=args.min_accuracy,
         min_gcp_threshold=args.min_gcp_threshold,
