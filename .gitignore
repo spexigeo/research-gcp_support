@@ -42,7 +42,15 @@ ENV/
 .Spotlight-V100
 .Trashes
 
-# Output files
+# Output directories
+gcps/
+output/
+gcps_output/
+results/
+exports/
+
+# Output file formats
+# GCP export formats
 *.csv
 *.xml
 *.shp
@@ -51,37 +59,57 @@ ENV/
 *.prj
 *.geojson
 *.cpg
-gcps/
-output/
-gcps_output/
+*.txt
 *.log
 
-# Text files (but keep important ones)
-*.txt
+# Keep important text files
 !requirements.txt
 !README.md
 !USGS_API_NOTES.md
 !GIT_SETUP.md
+!NOAA_AND_OTHER_SOURCES.md
+!QUICK_START_OTHER_SOURCES.md
+!NOAA_KMZ_SETUP.md
+!LICENSE
 !input/input-file.manifest
 
-# KMZ files (large, user-specific)
+# Large data files
 *.kmz
+*.kml
+*.zip
+*.tar
+*.tar.gz
+*.gz
+*.h5
+*.hdf5
+*.pickle
+*.pkl
+
+# Keep input manifest
 !input/input-file.manifest
 
-# Test output files (keep input manifest, ignore generated outputs)
-# Keep: input/input-file.manifest
-# Ignore: all generated test outputs
+# Image outputs (from notebooks, plots, etc.)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.pdf
 
-# Credentials
+# Credentials and secrets
 *.key
 *.pem
 .env
 credentials.json
+*.token
+*.secret
 
-# Package build artifacts
-*.egg-info/
-dist/
-build/
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
 
 
 
