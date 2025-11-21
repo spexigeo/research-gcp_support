@@ -44,7 +44,7 @@ export USGS_APPLICATION_TOKEN="your_token_here"
 finder = GCPFinder(usgs_application_token="your_token_here")
 
 # Option 3: CLI
-python -m gcp_support.cli --usgs-application-token "your_token" --h3-cells ...
+python -m research_gcp_support.cli --usgs-application-token "your_token" --h3-cells ...
 ```
 
 ### For NOAA (currently):
@@ -89,7 +89,7 @@ python -m gcp_support.cli --usgs-application-token "your_token" --h3-cells ...
 To test the current system (with mock data):
 
 ```python
-from gcp_support import GCPFinder
+from research_gcp_support import GCPFinder
 
 # Works with mock data - no credentials needed
 finder = GCPFinder()
@@ -113,4 +113,5 @@ gcps = finder.find_gcps(h3_cells=your_h3_cells)
 - See `NOAA_AND_OTHER_SOURCES.md` for detailed information
 - See `USGS_API_NOTES.md` for USGS setup
 - Current implementation uses mock data - perfect for development and testing
+
 

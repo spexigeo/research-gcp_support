@@ -4,7 +4,7 @@ This demonstrates the full workflow with mock GCPs.
 """
 
 try:
-    # Try relative imports first (when run as module: python -m gcp_support.test_with_mock)
+    # Try relative imports first (when run as module: python -m research_gcp_support.test_with_mock)
     from . import GCPFinder
     from .mock_gcp import MockGCPGenerator
     from .h3_utils import h3_cells_to_bbox
@@ -14,10 +14,10 @@ except ImportError:
     import sys
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from gcp_support import GCPFinder
-    from gcp_support.mock_gcp import MockGCPGenerator
-    from gcp_support.h3_utils import h3_cells_to_bbox
-    from gcp_support.manifest_parser import parse_manifest, get_h3_cells_from_manifest
+    from research_gcp_support import GCPFinder
+    from research_gcp_support.mock_gcp import MockGCPGenerator
+    from research_gcp_support.h3_utils import h3_cells_to_bbox
+    from research_gcp_support.manifest_parser import parse_manifest, get_h3_cells_from_manifest
 
 import os
 import sys
@@ -122,7 +122,7 @@ def main():
         try:
             from .gcp_filter import GCPFilter
         except ImportError:
-            from gcp_support.gcp_filter import GCPFilter
+            from research_gcp_support.gcp_filter import GCPFilter
         
         # Generate GCPs with varying accuracy
         all_gcps = MockGCPGenerator.generate_gcps_in_bbox(
@@ -142,7 +142,7 @@ def main():
             try:
                 from .gcp_filter import calculate_spatial_distribution_score
             except ImportError:
-                from gcp_support.gcp_filter import calculate_spatial_distribution_score
+                from research_gcp_support.gcp_filter import calculate_spatial_distribution_score
             
             spatial_metrics = calculate_spatial_distribution_score(filtered_gcps, bbox)
             print(f"  Spatial distribution metrics:")

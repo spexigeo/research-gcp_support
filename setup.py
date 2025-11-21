@@ -1,5 +1,5 @@
 """
-Setup configuration for gcp_support package.
+Setup configuration for research-gcp_support package.
 """
 
 from setuptools import setup, find_packages
@@ -11,13 +11,13 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
-    name="gcp-support",
+    name="research-gcp-support",
     version="0.1.0",
     author="Your Name",
     description="Ground Control Point finder and exporter for drone imagery processing",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/gcp_support",
+    url="https://github.com/yourusername/research-gcp_support",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -34,10 +34,11 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "gcp-support=gcp_support.cli:main",
+            "research-gcp-support=research_gcp_support.cli:main",
         ],
     },
 )
+
 
 
 

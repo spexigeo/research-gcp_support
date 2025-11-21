@@ -17,10 +17,10 @@ try:
 except ImportError:
     # Fall back to absolute imports (when run directly)
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from gcp_support import GCPFinder, h3_cells_to_bbox
-    from gcp_support.mock_gcp import MockGCPGenerator
-    from gcp_support.h3_utils import h3_cells_to_polygon
-    from gcp_support.manifest_parser import parse_manifest, get_h3_cells_from_manifest
+    from research_gcp_support import GCPFinder, h3_cells_to_bbox
+    from research_gcp_support.mock_gcp import MockGCPGenerator
+    from research_gcp_support.h3_utils import h3_cells_to_polygon
+    from research_gcp_support.manifest_parser import parse_manifest, get_h3_cells_from_manifest
 
 
 class TeeOutput:
@@ -133,7 +133,7 @@ def test_gcp_filtering():
     try:
         from .gcp_filter import GCPFilter, calculate_spatial_distribution_score
     except ImportError:
-        from gcp_support.gcp_filter import GCPFilter, calculate_spatial_distribution_score
+        from research_gcp_support.gcp_filter import GCPFilter, calculate_spatial_distribution_score
     from shapely.geometry import Point, Polygon
     
     # Get bounding box from manifest H3 cells

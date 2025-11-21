@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ### Basic Usage
 
 ```python
-from gcp_support import GCPFinder
+from research_gcp_support import GCPFinder
 
 # Initialize finder
 finder = GCPFinder()
@@ -60,8 +60,8 @@ if finder.last_spatial_metrics:
 For testing without API access, you can use mock GCPs:
 
 ```python
-from gcp_support.mock_gcp import MockGCPGenerator
-from gcp_support import GCPFinder
+from research_gcp_support.mock_gcp import MockGCPGenerator
+from research_gcp_support import GCPFinder
 
 # Generate mock GCPs
 bbox = (40.0, -75.0, 41.0, -74.0)
@@ -76,19 +76,19 @@ finder.export_all(mock_gcps, './output', 'test_gcps')
 
 ```bash
 # From H3 cells
-python -m gcp_support.cli --h3-cells 8a2a1072b4fffff 8a2a1072b5fffff --output-dir ./gcps
+python -m research_gcp_support.cli --h3-cells 8a2a1072b4fffff 8a2a1072b5fffff --output-dir ./gcps
 
 # From bounding box
-python -m gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --output-dir ./gcps
+python -m research_gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --output-dir ./gcps
 
 # With custom NOAA fallback threshold
-python -m gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --min-gcp-threshold 15 --output-dir ./gcps
+python -m research_gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --min-gcp-threshold 15 --output-dir ./gcps
 
 # With NOAA API key
-python -m gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --noaa-api-key YOUR_KEY --output-dir ./gcps
+python -m research_gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --noaa-api-key YOUR_KEY --output-dir ./gcps
 
 # With spatial distribution filtering (reject GCP sets with poor distribution)
-python -m gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --min-spread-score 0.5 --min-confidence-score 0.6 --output-dir ./gcps
+python -m research_gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --min-spread-score 0.5 --min-confidence-score 0.6 --output-dir ./gcps
 ```
 
 ### Spatial Distribution Analysis
@@ -96,8 +96,8 @@ python -m gcp_support.cli --bbox 40.0 -75.0 41.0 -74.0 --min-spread-score 0.5 --
 The library automatically evaluates the spatial distribution of GCPs to ensure they provide good geometric control across the entire area. This is critical for accurate bundle adjustment in photogrammetry software like MetaShape.
 
 ```python
-from gcp_support import GCPFinder
-from gcp_support.gcp_filter import calculate_spatial_distribution_score
+from research_gcp_support import GCPFinder
+from research_gcp_support.gcp_filter import calculate_spatial_distribution_score
 
 # Find GCPs (spatial metrics are automatically calculated)
 finder = GCPFinder()
@@ -119,7 +119,7 @@ finder = GCPFinder(
 gcps = finder.find_gcps(h3_cells=h3_cells)  # Returns empty list if distribution is poor
 
 # Or manually check distribution
-from gcp_support.gcp_filter import calculate_spatial_distribution_score
+from research_gcp_support.gcp_filter import calculate_spatial_distribution_score
 metrics = calculate_spatial_distribution_score(gcps, bbox)
 if metrics['confidence_score'] < 0.5:
     print("Warning: GCPs may be clustered, which could affect bundle adjustment quality")

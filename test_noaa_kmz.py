@@ -10,9 +10,9 @@ except ImportError:
     import sys
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from gcp_support import GCPFinder
-    from gcp_support.manifest_parser import get_h3_cells_from_manifest
-    from gcp_support.noaa_gcp import NOAAGCPClient
+    from research_gcp_support import GCPFinder
+    from research_gcp_support.manifest_parser import get_h3_cells_from_manifest
+    from research_gcp_support.noaa_gcp import NOAAGCPClient
 
 def main():
     print("=" * 70)
@@ -91,4 +91,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

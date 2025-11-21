@@ -282,3 +282,4 @@ def load_noaa_gcps_from_kmz(kmz_path: Optional[str] = None) -> List[Dict]:
     gcps = parse_kmz_file(str(kmz_path))
     return gcps
 
+

@@ -27,9 +27,9 @@ except ImportError:
     import sys
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from gcp_support.usgs_gcp import USGSGCPClient
-    from gcp_support.h3_utils import h3_cells_to_bbox
-    from gcp_support.manifest_parser import get_h3_cells_from_manifest
+    from research_gcp_support.usgs_gcp import USGSGCPClient
+    from research_gcp_support.h3_utils import h3_cells_to_bbox
+    from research_gcp_support.manifest_parser import get_h3_cells_from_manifest
 
 import requests
 import json

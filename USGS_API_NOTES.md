@@ -92,7 +92,7 @@ params = {
 Once the API is configured, test with:
 
 ```python
-from gcp_support import USGSGCPClient
+from research_gcp_support import USGSGCPClient
 
 # NEW METHOD (recommended): Use application token
 client = USGSGCPClient(application_token="your_application_token")

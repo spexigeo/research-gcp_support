@@ -51,7 +51,7 @@ To push to a remote repository (e.g., GitHub):
 
 ```bash
 # Add remote (replace with your repository URL)
-git remote add origin https://github.com/yourusername/gcp_support.git
+git remote add origin https://github.com/yourusername/research-gcp_support.git
 
 # Push to remote
 git push -u origin main
@@ -72,4 +72,5 @@ git commit -m "Description of changes"
 # Push to remote
 git push
 ```
+
 

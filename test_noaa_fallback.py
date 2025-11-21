@@ -11,10 +11,10 @@ except ImportError:
     import sys
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from gcp_support import GCPFinder
-    from gcp_support.mock_gcp import MockGCPGenerator
-    from gcp_support.manifest_parser import get_h3_cells_from_manifest
-    from gcp_support.h3_utils import h3_cells_to_bbox
+    from research_gcp_support import GCPFinder
+    from research_gcp_support.mock_gcp import MockGCPGenerator
+    from research_gcp_support.manifest_parser import get_h3_cells_from_manifest
+    from research_gcp_support.h3_utils import h3_cells_to_bbox
 
 import os
 import sys

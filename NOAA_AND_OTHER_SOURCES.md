@@ -267,7 +267,7 @@ class LocalGCPClient:
 For now, you can use the system with mock data:
 
 ```python
-from gcp_support import GCPFinder
+from research_gcp_support import GCPFinder
 
 # Mock data will be used automatically
 finder = GCPFinder()

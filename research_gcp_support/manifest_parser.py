@@ -83,3 +83,4 @@ def get_h3_cells_from_manifest(manifest_path: str) -> List[str]:
     h3_cells, _ = parse_manifest(manifest_path)
     return h3_cells
 
+

@@ -10,7 +10,7 @@ except ImportError:
     import sys
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from gcp_support import GCPFinder, h3_cells_to_bbox
+    from research_gcp_support import GCPFinder, h3_cells_to_bbox
 
 
 def example_from_h3_cells():
@@ -69,8 +69,8 @@ def example_with_filtering():
         from .gcp_filter import GCPFilter
         from .h3_utils import h3_cells_to_polygon
     except ImportError:
-        from gcp_support.gcp_filter import GCPFilter
-        from gcp_support.h3_utils import h3_cells_to_polygon
+        from research_gcp_support.gcp_filter import GCPFilter
+        from research_gcp_support.h3_utils import h3_cells_to_polygon
     
     finder = GCPFinder()
     
