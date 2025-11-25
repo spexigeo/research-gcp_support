@@ -368,16 +368,22 @@ def test_token_authentication(application_token: str, username: Optional[str] = 
     else:
         login_url = "https://earthexplorer.usgs.gov/inventory/json/v/1.4.1/login-token"
     
-    login_data = {
-        "applicationToken": application_token
-    }
-    
-    # M2M API requires both username and applicationToken
+    # M2M API uses "token" parameter, legacy API uses "applicationToken"
     if use_m2m:
-        login_data["username"] = username
-    elif username:
-        # Legacy API may accept username optionally
-        login_data["username"] = username
+        if not username:
+            print("❌ Error: M2M API requires username in addition to application_token")
+            return None
+        login_data = {
+            "username": username,
+            "token": application_token  # M2M API uses "token" parameter name
+        }
+    else:
+        # Legacy EarthExplorer API uses "applicationToken"
+        login_data = {
+            "applicationToken": application_token
+        }
+        if username:
+            login_data["username"] = username
     
     try:
         print(f"Attempting to authenticate with {api_name} API...")

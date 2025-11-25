@@ -84,17 +84,17 @@ class USGSGCPClient:
         # Both M2M and EE APIs use login-token endpoint
         login_url = f"{self.BASE_URL}/login-token"
         
-        # M2M API requires both username and applicationToken
+        # M2M API requires both username and token (parameter name is "token", not "applicationToken")
         if self.use_m2m:
             if not self.username:
                 print("Error: M2M API requires username in addition to application_token")
                 return None
             login_data = {
                 "username": self.username,
-                "applicationToken": self.application_token
+                "token": self.application_token  # M2M API uses "token" parameter name
             }
         else:
-            # Legacy EarthExplorer API may only need applicationToken
+            # Legacy EarthExplorer API uses "applicationToken"
             login_data = {
                 "applicationToken": self.application_token
             }
