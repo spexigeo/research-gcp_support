@@ -280,7 +280,19 @@ class USGSGCPClient:
                 return MockGCPGenerator.generate_gcps_in_bbox(bbox, max_results, source='usgs')
                 
         except requests.exceptions.RequestException as e:
-            print(f"⚠️  Error searching USGS API: {e}")
+            error_msg = str(e)
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_response = e.response.json()
+                    error_code = error_response.get("errorCode", "Unknown")
+                    error_message = error_response.get("errorMessage", "Unknown error")
+                    error_msg = f"{error_code}: {error_message}"
+                    print(f"⚠️  Error searching USGS API (bbox search): {error_msg}")
+                except:
+                    error_msg = f"{e.response.status_code}: {e.response.text[:200]}"
+                    print(f"⚠️  Error searching USGS API (bbox search): {error_msg}")
+            else:
+                print(f"⚠️  Error searching USGS API (bbox search): {error_msg}")
             # Fall back to mock data for testing
             from .mock_gcp import MockGCPGenerator
             print("   Using mock data for demonstration...")
@@ -335,12 +347,6 @@ class USGSGCPClient:
         search_request = {
             "apiKey": self.api_key,
             "datasetName": dataset_name,
-            "sceneFilter": {
-                "acquisitionFilter": {
-                    "start": "1900-01-01",
-                    "end": "2100-01-01"
-                }
-            },
             "spatialFilter": {
                 "filterType": "wrs2",
                 "path": path,
@@ -361,10 +367,27 @@ class USGSGCPClient:
                 params = {"jsonRequest": json.dumps(search_request)}
                 response = self.session.get(search_url, params=params, timeout=60)
             
-            response.raise_for_status()
+            # Check response status and parse errors
+            if response.status_code != 200:
+                try:
+                    error_response = response.json()
+                    error_code = error_response.get("errorCode", "Unknown")
+                    error_message = error_response.get("errorMessage", "Unknown error")
+                    print(f"⚠️  USGS API error (Path {path}, Row {row}): {error_code}: {error_message}")
+                    # Fall back to mock data
+                    from .mock_gcp import MockGCPGenerator
+                    return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
+                except:
+                    print(f"⚠️  USGS API HTTP error (Path {path}, Row {row}): {response.status_code}")
+                    from .mock_gcp import MockGCPGenerator
+                    return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
+            
             result = response.json()
             
             if result.get("errorCode"):
+                error_code = result.get("errorCode")
+                error_msg = result.get("errorMessage", "Unknown error")
+                print(f"⚠️  USGS API error (Path {path}, Row {row}): {error_code}: {error_msg}")
                 # Fall back to mock data
                 from .mock_gcp import MockGCPGenerator
                 return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
@@ -383,7 +406,19 @@ class USGSGCPClient:
             return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
             
         except requests.exceptions.RequestException as e:
-            print(f"⚠️  Error searching USGS API: {e}")
+            error_msg = str(e)
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_response = e.response.json()
+                    error_code = error_response.get("errorCode", "Unknown")
+                    error_message = error_response.get("errorMessage", "Unknown error")
+                    error_msg = f"{error_code}: {error_message}"
+                    print(f"⚠️  Error searching USGS API (Path {path}, Row {row}): {error_msg}")
+                except:
+                    error_msg = f"{e.response.status_code}: {e.response.text[:200]}"
+                    print(f"⚠️  Error searching USGS API (Path {path}, Row {row}): {error_msg}")
+            else:
+                print(f"⚠️  Error searching USGS API (Path {path}, Row {row}): {error_msg}")
             # Fall back to mock data
             from .mock_gcp import MockGCPGenerator
             return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
