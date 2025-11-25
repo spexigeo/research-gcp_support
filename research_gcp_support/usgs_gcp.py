@@ -246,9 +246,17 @@ class USGSGCPClient:
             result = response.json()
             
             if result.get("errorCode"):
+                error_code = result.get("errorCode")
                 error_msg = result.get("errorMessage", "Unknown error")
-                print(f"⚠️  USGS search error: {error_msg}")
+                print(f"⚠️  USGS search error: {error_code}: {error_msg}")
                 print(f"   Dataset '{dataset_name}' may not be available or accessible")
+                
+                # Provide helpful guidance for common errors
+                if error_code == "UNAUTHORIZED_USER":
+                    print(f"   Note: You may need to request access to the '{dataset_name}' dataset.")
+                    print(f"   Check your dataset access permissions at: https://ers.cr.usgs.gov/profile/access")
+                    print(f"   Some datasets require separate approval in addition to M2M API access.")
+                
                 # Fall back to mock data for testing
                 from .mock_gcp import MockGCPGenerator
                 print("   Using mock data for demonstration...")
@@ -288,6 +296,11 @@ class USGSGCPClient:
                     error_message = error_response.get("errorMessage", "Unknown error")
                     error_msg = f"{error_code}: {error_message}"
                     print(f"⚠️  Error searching USGS API (bbox search): {error_msg}")
+                    
+                    # Provide helpful guidance for common errors
+                    if error_code == "UNAUTHORIZED_USER":
+                        print(f"   Note: You may need to request access to the '{dataset_name}' dataset.")
+                        print(f"   Check your dataset access permissions at: https://ers.cr.usgs.gov/profile/access")
                 except:
                     error_msg = f"{e.response.status_code}: {e.response.text[:200]}"
                     print(f"⚠️  Error searching USGS API (bbox search): {error_msg}")
@@ -388,6 +401,13 @@ class USGSGCPClient:
                 error_code = result.get("errorCode")
                 error_msg = result.get("errorMessage", "Unknown error")
                 print(f"⚠️  USGS API error (Path {path}, Row {row}): {error_code}: {error_msg}")
+                
+                # Provide helpful guidance for common errors
+                if error_code == "UNAUTHORIZED_USER":
+                    print(f"   Note: You may need to request access to the '{dataset_name}' dataset.")
+                    print(f"   Check your dataset access permissions at: https://ers.cr.usgs.gov/profile/access")
+                    print(f"   Some datasets require separate approval in addition to M2M API access.")
+                
                 # Fall back to mock data
                 from .mock_gcp import MockGCPGenerator
                 return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
@@ -414,6 +434,11 @@ class USGSGCPClient:
                     error_message = error_response.get("errorMessage", "Unknown error")
                     error_msg = f"{error_code}: {error_message}"
                     print(f"⚠️  Error searching USGS API (Path {path}, Row {row}): {error_msg}")
+                    
+                    # Provide helpful guidance for common errors
+                    if error_code == "UNAUTHORIZED_USER":
+                        print(f"   Note: You may need to request access to the '{dataset_name}' dataset.")
+                        print(f"   Check your dataset access permissions at: https://ers.cr.usgs.gov/profile/access")
                 except:
                     error_msg = f"{e.response.status_code}: {e.response.text[:200]}"
                     print(f"⚠️  Error searching USGS API (Path {path}, Row {row}): {error_msg}")
@@ -422,6 +447,67 @@ class USGSGCPClient:
             # Fall back to mock data
             from .mock_gcp import MockGCPGenerator
             return MockGCPGenerator.generate_gcps_for_wrs2(path, row, max_results)
+    
+    def get_available_datasets(self, dataset_name: Optional[str] = None) -> List[Dict]:
+        """
+        Get list of available datasets that the user has access to.
+        
+        Args:
+            dataset_name: Optional dataset name to search for (if None, returns all datasets)
+            
+        Returns:
+            List of dataset dictionaries
+        """
+        if not self.api_key:
+            print("⚠️  Not authenticated. Cannot check available datasets.")
+            return []
+        
+        if self.use_m2m:
+            datasets_url = f"{self.BASE_URL}/dataset-search"
+            search_request = {"apiKey": self.api_key}
+            if dataset_name:
+                search_request["datasetName"] = dataset_name
+            
+            try:
+                response = self.session.post(
+                    datasets_url,
+                    json=search_request,
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("errorCode"):
+                        error_code = result.get("errorCode")
+                        error_msg = result.get("errorMessage", "Unknown error")
+                        print(f"⚠️  Error checking datasets: {error_code}: {error_msg}")
+                        if error_code == "UNAUTHORIZED_USER":
+                            print(f"   You may need to request dataset access at: https://ers.cr.usgs.gov/profile/access")
+                        return []
+                    return result.get("data", [])
+                else:
+                    print(f"⚠️  HTTP error checking datasets: {response.status_code}")
+                    return []
+            except requests.exceptions.RequestException as e:
+                print(f"⚠️  Error checking datasets: {e}")
+                return []
+        else:
+            # Legacy API
+            datasets_url = f"{self.BASE_URL}/datasets"
+            params = {"apiKey": self.api_key}
+            if dataset_name:
+                params["datasetName"] = dataset_name
+            
+            try:
+                response = self.session.get(datasets_url, params=params, timeout=30)
+                response.raise_for_status()
+                result = response.json()
+                if result.get("errorCode"):
+                    return []
+                return result.get("data", [])
+            except requests.exceptions.RequestException as e:
+                print(f"⚠️  Error checking datasets: {e}")
+                return []
     
     def get_gcp_details(self, gcp_id: str) -> Optional[Dict]:
         """

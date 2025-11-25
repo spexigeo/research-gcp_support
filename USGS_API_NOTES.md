@@ -139,6 +139,25 @@ The test script will:
 3. Test dataset search (e.g., NAIP)
 4. Test spatial search for scenes/GCPs
 
+## Dataset Access Permissions
+
+**Important**: Having M2M API access does not automatically grant access to all datasets. Some datasets (like NAIP) may require separate approval:
+
+1. **Check Dataset Access**: After getting M2M API access, you may need to request access to specific datasets
+2. **Request Dataset Access**: Visit https://ers.cr.usgs.gov/profile/access to see available datasets and request access
+3. **Common Error**: If you see `UNAUTHORIZED_USER: Unable to validate user API permissions`, you likely need to request access to that specific dataset
+
+You can check which datasets you have access to using:
+```python
+from research_gcp_support.usgs_gcp import USGSGCPClient
+
+client = USGSGCPClient(username="your_username", application_token="your_token")
+datasets = client.get_available_datasets()
+print(f"Available datasets: {len(datasets)}")
+for dataset in datasets[:10]:  # Show first 10
+    print(f"  - {dataset.get('datasetName')}: {dataset.get('datasetFullName')}")
+```
+
 ## GCP Data Availability
 
 **Important**: Ground Control Points may not be available as a standalone dataset through the USGS API. Instead:
