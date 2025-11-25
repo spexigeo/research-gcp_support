@@ -1,17 +1,18 @@
 """
-Test script to verify USGS EarthExplorer API access and GCP availability.
+Test script to verify USGS M2M API access and GCP availability.
 
 This script tests:
-1. Authentication with USGS EarthExplorer
-2. Access to GCP datasets
-3. Ability to search for GCPs in a bounding box
+1. Authentication with USGS M2M API (Machine-to-Machine)
+2. Access to datasets (e.g., NAIP for high-resolution imagery)
+3. Ability to search for scenes/GCPs in a bounding box
 
-Note: USGS has transitioned to application token authentication.
-- Username/password authentication is DEPRECATED
+Note: USGS M2M API is the recommended method for programmatic access.
+- Username/password authentication is DEPRECATED (login endpoint deprecated Feb 2025)
 - You need to:
   1. Request M2M API access: https://ers.cr.usgs.gov/profile/access
   2. Create an application token in your profile's "Applications" section
   3. Use the token with the /login-token endpoint
+- M2M API documentation: https://m2m.cr.usgs.gov/
 - See: https://www.usgs.gov/media/files/m2m-application-token-documentation
 """
 
@@ -342,28 +343,34 @@ def test_list_all_datasets(api_key: str) -> None:
         print(f"❌ Error listing datasets: {e}")
 
 
-def test_token_authentication(application_token: str) -> Optional[str]:
+def test_token_authentication(application_token: str, use_m2m: bool = True) -> Optional[str]:
     """
-    Test USGS EarthExplorer authentication using application token (new method).
+    Test USGS authentication using application token via M2M API or legacy EarthExplorer API.
     
     Args:
         application_token: USGS application token
+        use_m2m: Whether to use M2M API (True) or legacy EarthExplorer API (False)
         
     Returns:
         API key if successful, None otherwise
     """
+    api_name = "M2M" if use_m2m else "EarthExplorer"
     print("=" * 70)
-    print("Testing USGS EarthExplorer Token Authentication (New Method)")
+    print(f"Testing USGS {api_name} Token Authentication")
     print("=" * 70)
     
-    login_url = "https://earthexplorer.usgs.gov/inventory/json/v/1.4.1/login-token"
+    if use_m2m:
+        login_url = "https://m2m.cr.usgs.gov/api/api/json/stable/login-token"
+    else:
+        login_url = "https://earthexplorer.usgs.gov/inventory/json/v/1.4.1/login-token"
     
     login_data = {
         "applicationToken": application_token
     }
     
     try:
-        print("Attempting to authenticate with application token...")
+        print(f"Attempting to authenticate with {api_name} API...")
+        print(f"  Endpoint: {login_url}")
         response = requests.post(login_url, json=login_data, timeout=30)
         print(f"  Status code: {response.status_code}")
         
@@ -371,7 +378,10 @@ def test_token_authentication(application_token: str) -> Optional[str]:
             try:
                 result = response.json()
                 if result.get("errorCode"):
-                    print(f"  ❌ API error: {result.get('errorMessage', 'Unknown error')}")
+                    error_msg = result.get("errorMessage", "Unknown error")
+                    print(f"  ❌ API error: {error_msg}")
+                    if use_m2m:
+                        print(f"  Make sure you have M2M API access enabled at: https://ers.cr.usgs.gov/profile/access")
                     return None
                 
                 api_key = result.get("data")
@@ -393,25 +403,83 @@ def test_token_authentication(application_token: str) -> Optional[str]:
             
     except requests.exceptions.RequestException as e:
         print(f"❌ Error during token authentication: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"  Response status: {e.response.status_code}")
+            print(f"  Response: {e.response.text[:200]}")
         return None
+
+
+def test_m2m_dataset_search(api_key: str, dataset_name: str = "NAIP") -> bool:
+    """
+    Test searching for datasets using M2M API.
+    
+    Args:
+        api_key: USGS API key from authentication
+        dataset_name: Name of dataset to search for (default: "NAIP")
+        
+    Returns:
+        True if dataset is found, False otherwise
+    """
+    print("\n" + "=" * 70)
+    print(f"Testing M2M API Dataset Search for '{dataset_name}'")
+    print("=" * 70)
+    
+    # M2M API datasets endpoint
+    datasets_url = "https://m2m.cr.usgs.gov/api/api/json/stable/dataset-search"
+    
+    search_request = {
+        "apiKey": api_key,
+        "datasetName": dataset_name
+    }
+    
+    try:
+        print(f"Searching for dataset: {dataset_name}")
+        response = requests.post(
+            datasets_url,
+            json=search_request,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        if result.get("errorCode"):
+            print(f"❌ Dataset search failed: {result.get('errorMessage', 'Unknown error')}")
+            return False
+        
+        data = result.get("data", [])
+        if data:
+            print(f"✓ Found {len(data)} dataset(s) matching '{dataset_name}':")
+            for dataset in data:
+                print(f"  - {dataset.get('datasetName', 'Unknown')}: {dataset.get('datasetFullName', 'No description')}")
+            return True
+        else:
+            print(f"⚠️  No datasets found matching '{dataset_name}'")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error during dataset search: {e}")
+        return False
 
 
 def main():
     """Main test function."""
     print("=" * 70)
-    print("USGS EarthExplorer GCP Access Test")
+    print("USGS M2M API Access Test")
     print("=" * 70)
     print()
-    print("NOTE: USGS now requires application tokens for API access.")
-    print("Username/password authentication is deprecated.")
+    print("NOTE: USGS M2M API requires application tokens for access.")
+    print("Username/password authentication is deprecated (login endpoint deprecated Feb 2025).")
     print()
     print("To get an application token:")
     print("1. Log into https://earthexplorer.usgs.gov/")
     print("2. Request M2M API access: https://ers.cr.usgs.gov/profile/access")
     print("3. Create an application token in your profile's 'Applications' section")
+    print("4. M2M API documentation: https://m2m.cr.usgs.gov/")
     print()
     
-    # Try token authentication first (new method)
+    # Try M2M API token authentication first (recommended)
     application_token = os.getenv("USGS_APPLICATION_TOKEN")
     if not application_token:
         print("Do you have a USGS application token? (y/n): ", end="")
@@ -422,9 +490,20 @@ def main():
     
     api_key = None
     if application_token:
-        api_key = test_token_authentication(application_token)
+        # Try M2M API first (recommended)
+        print("\n" + "=" * 70)
+        print("Testing M2M API (recommended)")
+        print("=" * 70)
+        api_key = test_token_authentication(application_token, use_m2m=True)
+        
+        # If M2M fails, try legacy EarthExplorer API
+        if not api_key:
+            print("\n" + "=" * 70)
+            print("M2M API failed, trying legacy EarthExplorer API...")
+            print("=" * 70)
+            api_key = test_token_authentication(application_token, use_m2m=False)
     
-    # Fallback to username/password (deprecated but might work for some accounts)
+    # Fallback to username/password (deprecated, may not work)
     if not api_key:
         print("\n" + "=" * 70)
         print("Trying deprecated username/password method (may not work)...")
@@ -448,51 +527,56 @@ def main():
         print("\n" + "=" * 70)
         print("❌ Could not authenticate with any method")
         print("=" * 70)
-        print("\nTo get API access:")
+        print("\nTo get M2M API access:")
         print("1. Request M2M API access: https://ers.cr.usgs.gov/profile/access")
         print("2. Create an application token in your profile")
         print("3. Use the token with this script: export USGS_APPLICATION_TOKEN='your_token'")
-        print("\nDocumentation: https://www.usgs.gov/media/files/m2m-application-token-documentation")
+        print("\nDocumentation:")
+        print("- M2M API: https://m2m.cr.usgs.gov/")
+        print("- Token docs: https://www.usgs.gov/media/files/m2m-application-token-documentation")
         return
     
-    # api_key should already be set from main() function
-    if not api_key:
-        return
+    # Test M2M dataset search
+    test_m2m_dataset_search(api_key, "NAIP")
     
-    # Test 2: List all datasets to find GCP-related ones
-    test_list_all_datasets(api_key)
-    
-    # Test 3: Search for GCP dataset specifically
-    test_dataset_search(api_key, "GCP")
-    
-    # Test 4: Try to search for GCPs in a bounding box
-    # Use H3 cells from manifest if available, otherwise use a test bbox
-    try:
-        manifest_path = os.path.join(os.path.dirname(__file__), 'input', 'input-file.manifest')
-        if os.path.exists(manifest_path):
-            h3_cells = get_h3_cells_from_manifest(manifest_path)
-            bbox = h3_cells_to_bbox(h3_cells)
-            print(f"\nUsing bounding box from manifest H3 cells: {h3_cells}")
-        else:
-            # Use a test bounding box (New York area)
+    # Continue with additional tests if authentication succeeded
+    if api_key:
+        # Test legacy EarthExplorer API endpoints (for comparison)
+        print("\n" + "=" * 70)
+        print("Testing Legacy EarthExplorer API Endpoints")
+        print("=" * 70)
+        test_list_all_datasets(api_key)
+        test_dataset_search(api_key, "GCP")
+        
+        # Test 4: Try to search for GCPs in a bounding box
+        # Use H3 cells from manifest if available, otherwise use a test bbox
+        try:
+            manifest_path = os.path.join(os.path.dirname(__file__), 'input', 'input-file.manifest')
+            if os.path.exists(manifest_path):
+                h3_cells = get_h3_cells_from_manifest(manifest_path)
+                bbox = h3_cells_to_bbox(h3_cells)
+                print(f"\nUsing bounding box from manifest H3 cells: {h3_cells}")
+            else:
+                # Use a test bounding box (New York area)
+                bbox = (40.0, -75.0, 41.0, -74.0)
+                print(f"\nUsing test bounding box (New York area)")
+        except Exception as e:
+            print(f"\n⚠️  Could not get bounding box from manifest: {e}")
             bbox = (40.0, -75.0, 41.0, -74.0)
-            print(f"\nUsing test bounding box (New York area)")
-    except Exception as e:
-        print(f"\n⚠️  Could not get bounding box from manifest: {e}")
-        bbox = (40.0, -75.0, 41.0, -74.0)
-        print(f"Using test bounding box (New York area)")
-    
-    test_gcp_search(api_key, bbox)
-    
-    print("\n" + "=" * 70)
-    print("Test Summary")
-    print("=" * 70)
-    print("✓ Authentication: Successful")
-    print("⚠️  GCP Access: Check results above")
-    print("\nNext steps:")
-    print("1. If GCP datasets were found, update usgs_gcp.py with the correct dataset name")
-    print("2. If no GCP datasets found, check USGS documentation or contact USGS support")
-    print("3. GCPs might be available through a different USGS service or portal")
+            print(f"Using test bounding box (New York area)")
+        
+        test_gcp_search(api_key, bbox)
+        
+        print("\n" + "=" * 70)
+        print("Test Summary")
+        print("=" * 70)
+        print("✓ Authentication: Successful")
+        print("⚠️  GCP Access: Check results above")
+        print("\nNext steps:")
+        print("1. GCPs may be embedded in NAIP or other imagery datasets")
+        print("2. Check scene metadata for GCP information")
+        print("3. Update usgs_gcp.py to extract GCPs from scene results")
+        print("4. M2M API documentation: https://m2m.cr.usgs.gov/")
 
 
 if __name__ == "__main__":

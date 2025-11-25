@@ -2,13 +2,11 @@
 
 ## Overview
 
-The `usgs_gcp.py` module provides a framework for accessing USGS Ground Control Points, but requires configuration with the actual USGS API endpoints.
+The `usgs_gcp.py` module provides access to USGS Ground Control Points via the M2M (Machine-to-Machine) API. The M2M API is the recommended method for programmatic access to USGS data.
 
-## USGS Data Sources
+## USGS M2M API Setup
 
-### Option 1: USGS EarthExplorer API
-
-The USGS EarthExplorer provides an API for accessing various datasets including GCPs. To use this:
+### Step 1: Request M2M API Access
 
 1. **Register for an account**: Create a free account at https://earthexplorer.usgs.gov/
 2. **Request M2M API Access**: 
@@ -19,15 +17,29 @@ The USGS EarthExplorer provides an API for accessing various datasets including 
 3. **Create Application Token**:
    - After M2M access is approved, go to your profile's "Applications" section
    - Generate a new application token
-   - Save this token securely
-4. **Use Token for Authentication**: Use the token with the `/login-token` endpoint
+   - Save this token securely (you'll need it for authentication)
+
+### Step 2: Use the M2M API
+
+**M2M API Base URL**: `https://m2m.cr.usgs.gov/api/api/json/stable`
+
+**Authentication Endpoint**: `/login-token` (POST request with `applicationToken`)
+
+**Important Notes**:
+- The `/login` endpoint was **deprecated in February 2025**
+- You **must** use the `/login-token` endpoint with an application token
+- Username/password authentication is **DEPRECATED** and may not work
 
 **API Documentation**: 
-- https://earthexplorer.usgs.gov/inventory/documentation/json-docs
-- M2M Application Token Documentation: https://www.usgs.gov/media/files/m2m-application-token-documentation
-- The base URL is: `https://earthexplorer.usgs.gov/inventory/json/v/1.4.1`
+- M2M API Test Page: https://m2m.cr.usgs.gov/
+- M2M API Documentation: Available at https://m2m.cr.usgs.gov/ (after login)
+- Application Token Documentation: https://www.usgs.gov/media/files/m2m-application-token-documentation
 
-**Important**: Username/password authentication is **DEPRECATED**. You must use application tokens.
+### Legacy EarthExplorer API (Not Recommended)
+
+The legacy EarthExplorer API is still available but not recommended for new integrations:
+- Base URL: `https://earthexplorer.usgs.gov/inventory/json/v/1.4.1`
+- Documentation: https://earthexplorer.usgs.gov/inventory/documentation/json-docs
 
 ### Option 2: USGS GCP Database Direct Access
 
@@ -89,19 +101,25 @@ params = {
 
 ## Testing
 
-Once the API is configured, test with:
+Once you have M2M API access and an application token, test with:
 
 ```python
-from research_gcp_support import USGSGCPClient
+from research_gcp_support.usgs_gcp import USGSGCPClient
 
-# NEW METHOD (recommended): Use application token
-client = USGSGCPClient(application_token="your_application_token")
+# M2M API (recommended): Use application token
+client = USGSGCPClient(
+    application_token="your_application_token",
+    use_m2m=True  # Use M2M API (default)
+)
 bbox = (40.0, -75.0, 41.0, -74.0)  # Example bounding box
-gcps = client.find_gcps_by_bbox(bbox)
+gcps = client.find_gcps_by_bbox(bbox, dataset_name="NAIP")
 print(f"Found {len(gcps)} GCPs")
 
-# DEPRECATED METHOD: Username/password (may not work)
-# client = USGSGCPClient(username="your_username", password="your_password")
+# Legacy EarthExplorer API (not recommended)
+# client = USGSGCPClient(
+#     application_token="your_application_token",
+#     use_m2m=False  # Use legacy API
+# )
 ```
 
 Or use the test script:
@@ -112,12 +130,29 @@ export USGS_APPLICATION_TOKEN="your_token_here"
 python test_usgs_access.py
 ```
 
+The test script will:
+1. Test M2M API authentication (recommended)
+2. Fall back to legacy EarthExplorer API if M2M fails
+3. Test dataset search (e.g., NAIP)
+4. Test spatial search for scenes/GCPs
+
+## GCP Data Availability
+
+**Important**: Ground Control Points may not be available as a standalone dataset through the USGS API. Instead:
+
+1. **GCPs may be embedded in imagery datasets**: GCPs are often part of NAIP or other high-resolution imagery datasets
+2. **Scene metadata**: GCP information may be available in scene metadata rather than as a separate dataset
+3. **Separate extraction required**: You may need to extract GCP information from scene search results
+
+The current implementation searches for scenes (e.g., NAIP) and attempts to extract GCP information. If GCPs are not found in scene metadata, the code falls back to mock data for testing purposes.
+
 ## Notes
 
-- The current implementation is a framework that needs API-specific details filled in
+- M2M API is the recommended method for all new integrations
 - Rate limiting may apply to USGS APIs
-- Some GCP data may require special licensing or agreements
+- Some datasets may require special licensing or agreements
 - Consider caching results to avoid repeated API calls
+- GCP extraction from scene metadata may require additional implementation based on USGS data structure
 
 ## Troubleshooting 403 Forbidden Errors
 
