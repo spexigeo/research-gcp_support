@@ -101,6 +101,7 @@ exports/
 *.pem
 .env
 credentials.json
+usgs_credentials.json
 *.token
 *.secret
 
