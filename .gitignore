@@ -63,13 +63,6 @@ visualizations/
 *.cpg
 *.txt
 *.log
-# Basemap and visualization files
-*.tif
-*.tiff
-*.geotiff
-*.png
-*.jpg
-*.jpeg
 
 # Keep important text files
 !requirements.txt
@@ -97,13 +90,16 @@ visualizations/
 # Keep input manifest
 !input/input-file.manifest
 
-# Image outputs (from notebooks, plots, etc.)
+# Image outputs (from notebooks, plots, basemaps, etc.)
 *.png
 *.jpg
 *.jpeg
 *.gif
 *.svg
 *.pdf
+*.tif
+*.tiff
+*.geotiff
 
 # Credentials and secrets
 *.key
