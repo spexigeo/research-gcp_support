@@ -34,9 +34,9 @@ class GCPFinder:
         Initialize GCP finder.
         
         Args:
-            usgs_username: USGS EarthExplorer username (DEPRECATED - use usgs_application_token)
-            usgs_password: USGS EarthExplorer password (DEPRECATED - use usgs_application_token)
-            usgs_application_token: USGS application token (NEW METHOD - recommended)
+            usgs_username: USGS EarthExplorer username (REQUIRED for M2M API with application_token)
+            usgs_password: USGS EarthExplorer password (DEPRECATED - not used with application_token)
+            usgs_application_token: USGS application token (REQUIRED for M2M API)
             noaa_api_key: NOAA API key (optional, currently not required for NGS archive)
             min_accuracy: Minimum geometric accuracy in meters
             require_photo_identifiable: Whether to require photo-identifiable GCPs
@@ -47,7 +47,8 @@ class GCPFinder:
         self.usgs_client = USGSGCPClient(
             username=usgs_username, 
             password=usgs_password,
-            application_token=usgs_application_token
+            application_token=usgs_application_token,
+            use_m2m=True  # Use M2M API by default
         )
         self.noaa_client = NOAAGCPClient(api_key=noaa_api_key)
         self.min_accuracy = min_accuracy

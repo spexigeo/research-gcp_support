@@ -35,9 +35,9 @@ class USGSGCPClient:
         Initialize USGS GCP client.
         
         Args:
-            username: USGS EarthExplorer username (DEPRECATED - use application_token instead)
-            password: USGS EarthExplorer password (DEPRECATED - use application_token instead)
-            application_token: USGS application token (NEW METHOD - required for M2M API)
+            username: USGS EarthExplorer username (REQUIRED for M2M API with application_token)
+            password: USGS EarthExplorer password (DEPRECATED - not used with application_token)
+            application_token: USGS application token (REQUIRED for M2M API)
             use_m2m: Whether to use M2M API (True) or legacy EarthExplorer API (False)
         """
         self.username = username
@@ -51,13 +51,19 @@ class USGSGCPClient:
         self.BASE_URL = self.M2M_BASE_URL if use_m2m else self.EE_BASE_URL
         
         # Authenticate if credentials provided
-        # Prefer token authentication (new method, required for M2M)
-        if application_token:
+        # M2M API requires both username and application_token
+        if use_m2m and application_token:
+            if not username:
+                print("Warning: M2M API requires both username and application_token.")
+                print("Please provide username when using M2M API.")
+            self.api_key = self._authenticate_with_token()
+        elif application_token:
+            # Legacy EE API with token
             self.api_key = self._authenticate_with_token()
         elif username and password:
             if use_m2m:
                 print("Warning: M2M API requires application_token. Username/password not supported.")
-                print("Please use application_token instead. See USGS_API_NOTES.md")
+                print("Please use application_token (and username) instead. See USGS_API_NOTES.md")
             else:
                 print("Warning: Username/password authentication is deprecated.")
                 print("Please use application_token instead. See USGS_API_NOTES.md")
@@ -70,15 +76,30 @@ class USGSGCPClient:
         This method works with both M2M API and legacy EarthExplorer API.
         The login endpoint was deprecated in February 2025.
         
+        Note: M2M API requires both username and applicationToken.
+        
         Returns:
             API key if successful, None otherwise
         """
         # Both M2M and EE APIs use login-token endpoint
         login_url = f"{self.BASE_URL}/login-token"
         
-        login_data = {
-            "applicationToken": self.application_token
-        }
+        # M2M API requires both username and applicationToken
+        if self.use_m2m:
+            if not self.username:
+                print("Error: M2M API requires username in addition to application_token")
+                return None
+            login_data = {
+                "username": self.username,
+                "applicationToken": self.application_token
+            }
+        else:
+            # Legacy EarthExplorer API may only need applicationToken
+            login_data = {
+                "applicationToken": self.application_token
+            }
+            if self.username:
+                login_data["username"] = self.username
         
         try:
             response = self.session.post(login_url, json=login_data, timeout=30)
@@ -91,6 +112,7 @@ class USGSGCPClient:
                 print(f"USGS token authentication failed: {error_msg}")
                 if self.use_m2m:
                     print("  Make sure you have M2M API access enabled at: https://ers.cr.usgs.gov/profile/access")
+                    print("  M2M API requires both username and application_token")
                 return None
             
             api_key = result.get("data")

@@ -343,12 +343,13 @@ def test_list_all_datasets(api_key: str) -> None:
         print(f"❌ Error listing datasets: {e}")
 
 
-def test_token_authentication(application_token: str, use_m2m: bool = True) -> Optional[str]:
+def test_token_authentication(application_token: str, username: Optional[str] = None, use_m2m: bool = True) -> Optional[str]:
     """
     Test USGS authentication using application token via M2M API or legacy EarthExplorer API.
     
     Args:
         application_token: USGS application token
+        username: USGS username (REQUIRED for M2M API)
         use_m2m: Whether to use M2M API (True) or legacy EarthExplorer API (False)
         
     Returns:
@@ -361,12 +362,22 @@ def test_token_authentication(application_token: str, use_m2m: bool = True) -> O
     
     if use_m2m:
         login_url = "https://m2m.cr.usgs.gov/api/api/json/stable/login-token"
+        if not username:
+            print("❌ Error: M2M API requires username in addition to application_token")
+            return None
     else:
         login_url = "https://earthexplorer.usgs.gov/inventory/json/v/1.4.1/login-token"
     
     login_data = {
         "applicationToken": application_token
     }
+    
+    # M2M API requires both username and applicationToken
+    if use_m2m:
+        login_data["username"] = username
+    elif username:
+        # Legacy API may accept username optionally
+        login_data["username"] = username
     
     try:
         print(f"Attempting to authenticate with {api_name} API...")
@@ -480,9 +491,17 @@ def main():
     print()
     
     # Try M2M API token authentication first (recommended)
+    # M2M API requires both username and application_token
+    username = os.getenv("USGS_USERNAME")
     application_token = os.getenv("USGS_APPLICATION_TOKEN")
+    
+    if not username:
+        print("Enter your USGS EarthExplorer username:")
+        print("(You can also set USGS_USERNAME environment variable)")
+        username = input("USGS Username: ").strip()
+    
     if not application_token:
-        print("Do you have a USGS application token? (y/n): ", end="")
+        print("\nDo you have a USGS application token? (y/n): ", end="")
         has_token = input().strip().lower()
         if has_token == 'y':
             import getpass
@@ -490,18 +509,19 @@ def main():
     
     api_key = None
     if application_token:
-        # Try M2M API first (recommended)
-        print("\n" + "=" * 70)
-        print("Testing M2M API (recommended)")
-        print("=" * 70)
-        api_key = test_token_authentication(application_token, use_m2m=True)
+        # Try M2M API first (recommended) - requires both username and token
+        if username:
+            print("\n" + "=" * 70)
+            print("Testing M2M API (recommended)")
+            print("=" * 70)
+            api_key = test_token_authentication(application_token, username=username, use_m2m=True)
         
         # If M2M fails, try legacy EarthExplorer API
         if not api_key:
             print("\n" + "=" * 70)
             print("M2M API failed, trying legacy EarthExplorer API...")
             print("=" * 70)
-            api_key = test_token_authentication(application_token, use_m2m=False)
+            api_key = test_token_authentication(application_token, username=username, use_m2m=False)
     
     # Fallback to username/password (deprecated, may not work)
     if not api_key:

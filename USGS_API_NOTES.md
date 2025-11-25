@@ -23,11 +23,12 @@ The `usgs_gcp.py` module provides access to USGS Ground Control Points via the M
 
 **M2M API Base URL**: `https://m2m.cr.usgs.gov/api/api/json/stable`
 
-**Authentication Endpoint**: `/login-token` (POST request with `applicationToken`)
+**Authentication Endpoint**: `/login-token` (POST request with `username` and `applicationToken`)
 
 **Important Notes**:
 - The `/login` endpoint was **deprecated in February 2025**
-- You **must** use the `/login-token` endpoint with an application token
+- You **must** use the `/login-token` endpoint with both `username` and `applicationToken`
+- M2M API **requires both** your USGS username and application token for authentication
 - Username/password authentication is **DEPRECATED** and may not work
 
 **API Documentation**: 
@@ -106,9 +107,10 @@ Once you have M2M API access and an application token, test with:
 ```python
 from research_gcp_support.usgs_gcp import USGSGCPClient
 
-# M2M API (recommended): Use application token
+# M2M API (recommended): Requires both username and application token
 client = USGSGCPClient(
-    application_token="your_application_token",
+    username="your_username",  # Required for M2M API
+    application_token="your_application_token",  # Required for M2M API
     use_m2m=True  # Use M2M API (default)
 )
 bbox = (40.0, -75.0, 41.0, -74.0)  # Example bounding box
@@ -125,7 +127,8 @@ print(f"Found {len(gcps)} GCPs")
 Or use the test script:
 
 ```bash
-# Set your application token as an environment variable
+# Set your username and application token as environment variables
+export USGS_USERNAME="your_username"
 export USGS_APPLICATION_TOKEN="your_token_here"
 python test_usgs_access.py
 ```
