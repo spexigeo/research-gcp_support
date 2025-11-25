@@ -57,6 +57,7 @@ class GCPFinder:
         self.min_spread_score = min_spread_score
         self.min_confidence_score = min_confidence_score
         self.last_spatial_metrics = None  # Store spatial metrics from last filter operation
+        self.last_original_gcps = None  # Store original GCPs before filtering
     
     def h3_cells_to_bbox(self, h3_cells: List[str]) -> Tuple[float, float, float, float]:
         """
@@ -151,6 +152,9 @@ class GCPFinder:
             print(f"  Total unique GCPs after combining sources: {len(all_gcps)}")
         else:
             print(f"  USGS results ({len(unique_usgs_gcps)}) meet threshold ({threshold}), skipping NOAA search")
+        
+        # Store original GCPs before filtering
+        self.last_original_gcps = all_gcps.copy()
         
         # Filter GCPs
         filter_obj = GCPFilter(

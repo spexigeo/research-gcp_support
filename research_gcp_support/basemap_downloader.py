@@ -268,19 +268,29 @@ def visualize_gcps_on_basemap(
     basemap_source: str = "openstreetmap",
     output_path: Optional[str] = None,
     title: str = "GCPs on Basemap",
-    figsize: Tuple[int, int] = (12, 10)
+    figsize: Tuple[int, int] = (12, 10),
+    original_gcps: Optional[List[Dict]] = None,
+    original_color: str = 'orange',
+    filtered_color: str = 'red',
+    original_label: str = 'Original GCPs',
+    filtered_label: str = 'Filtered GCPs'
 ) -> str:
     """
     Visualize GCPs overlaid on a basemap.
     
     Args:
-        gcps: List of GCP dictionaries with 'lat' and 'lon' keys
+        gcps: List of filtered GCP dictionaries with 'lat' and 'lon' keys
         bbox: Bounding box as (min_lat, min_lon, max_lat, max_lon)
         basemap_path: Path to existing basemap GeoTIFF (if None, will download)
         basemap_source: Source for basemap if downloading ('openstreetmap', 'esri', or 'esri_world_imagery')
         output_path: Path to save visualization (if None, displays only)
         title: Title for the plot
         figsize: Figure size (width, height)
+        original_gcps: Optional list of original GCPs (before filtering) to display
+        original_color: Color for original GCPs (default: 'orange')
+        filtered_color: Color for filtered GCPs (default: 'red')
+        original_label: Label for original GCPs in legend
+        filtered_label: Label for filtered GCPs in legend
         
     Returns:
         Path to saved visualization or empty string if just displayed
@@ -297,6 +307,56 @@ def visualize_gcps_on_basemap(
         basemap_path = str(temp_dir / f"basemap_{basemap_source}_{int(time.time())}.tif")
         download_basemap(bbox, basemap_path, source=basemap_source)
     
+    # Check if we need to download a basemap for GCP area
+    # Collect GCP coordinates first to check if they're outside the provided basemap
+    gcp_lons_temp = []
+    gcp_lats_temp = []
+    if original_gcps:
+        for gcp in original_gcps:
+            if 'lat' in gcp and 'lon' in gcp:
+                gcp_lons_temp.append(gcp['lon'])
+                gcp_lats_temp.append(gcp['lat'])
+    if not gcp_lons_temp and gcps:
+        for gcp in gcps:
+            if 'lat' in gcp and 'lon' in gcp:
+                gcp_lons_temp.append(gcp['lon'])
+                gcp_lats_temp.append(gcp['lat'])
+    
+    # If GCPs are found and outside the basemap bounds, download a new basemap for GCP area
+    if gcp_lons_temp and gcp_lats_temp:
+        # Load existing basemap to check bounds
+        with rasterio.open(basemap_path) as src:
+            existing_bounds = src.bounds
+        
+        gcp_min_lon = min(gcp_lons_temp)
+        gcp_max_lon = max(gcp_lons_temp)
+        gcp_min_lat = min(gcp_lats_temp)
+        gcp_max_lat = max(gcp_lats_temp)
+        
+        # Check if GCPs are outside existing basemap
+        if (gcp_min_lon < existing_bounds.left - 0.1 or gcp_max_lon > existing_bounds.right + 0.1 or
+            gcp_min_lat < existing_bounds.bottom - 0.1 or gcp_max_lat > existing_bounds.top + 0.1):
+            print(f"  [DEBUG] GCPs are outside existing basemap, downloading new basemap for GCP area...")
+            # Create GCP bbox with padding
+            padding_lon = (gcp_max_lon - gcp_min_lon) * 0.1
+            padding_lat = (gcp_max_lat - gcp_min_lat) * 0.1
+            gcp_bbox = (
+                max(gcp_min_lat - padding_lat, -90),
+                max(gcp_min_lon - padding_lon, -180),
+                min(gcp_max_lat + padding_lat, 90),
+                min(gcp_max_lon + padding_lon, 180)
+            )
+            # Download new basemap for GCP area
+            import tempfile
+            temp_dir = Path(tempfile.gettempdir())
+            basemap_path = str(temp_dir / f"basemap_{basemap_source}_gcp_{int(time.time())}.tif")
+            try:
+                download_basemap(gcp_bbox, basemap_path, source=basemap_source)
+                print(f"  [DEBUG] ✓ Downloaded basemap for GCP area")
+            except Exception as e:
+                print(f"  [DEBUG] ⚠️  Could not download basemap for GCP area: {e}")
+                print(f"  [DEBUG]   Using original basemap (may show gray area where GCPs are)")
+    
     # Load basemap
     with rasterio.open(basemap_path) as src:
         basemap_img = src.read([1, 2, 3])  # RGB bands
@@ -306,53 +366,266 @@ def visualize_gcps_on_basemap(
         # Create figure
         fig, ax = plt.subplots(figsize=figsize)
         
+        # Collect GCP coordinates for bounding box calculation (do this FIRST)
+        gcp_lons = []
+        gcp_lats = []
+        
+        # Collect original GCPs first (if provided)
+        if original_gcps:
+            for gcp in original_gcps:
+                if 'lat' in gcp and 'lon' in gcp:
+                    gcp_lons.append(gcp['lon'])
+                    gcp_lats.append(gcp['lat'])
+        
+        # If no original GCPs, use filtered GCPs
+        if not gcp_lons and gcps:
+            for gcp in gcps:
+                if 'lat' in gcp and 'lon' in gcp:
+                    gcp_lons.append(gcp['lon'])
+                    gcp_lats.append(gcp['lat'])
+        
         # Display basemap
-        ax.imshow(
+        # Note: basemap may not cover GCP area if GCPs are outside search bbox
+        # Always show the basemap, even if it doesn't cover the full plot area
+        # Use interpolation to make it look better when zoomed
+        im = ax.imshow(
             basemap_img,
             extent=[basemap_bounds.left, basemap_bounds.right, 
                    basemap_bounds.bottom, basemap_bounds.top],
-            origin='upper'
+            origin='upper',
+            zorder=1,  # Basemap should be in the background
+            aspect='auto',  # Allow aspect ratio to adjust
+            interpolation='bilinear'  # Smooth interpolation
         )
         
-        # Create GCP points
+        # Set background color to light gray (will show if basemap doesn't cover area)
+        # This ensures we see something even if basemap is outside plot limits
+        ax.set_facecolor('#E0E0E0')  # Light gray background
+        
+        # If GCPs are outside basemap bounds, add a note
+        if gcp_lons and gcp_lats:
+            gcp_min_lon = min(gcp_lons)
+            gcp_max_lon = max(gcp_lons)
+            gcp_min_lat = min(gcp_lats)
+            gcp_max_lat = max(gcp_lats)
+            
+            if (gcp_min_lon < basemap_bounds.left or gcp_max_lon > basemap_bounds.right or
+                gcp_min_lat < basemap_bounds.bottom or gcp_max_lat > basemap_bounds.top):
+                print(f"  [DEBUG] WARNING: GCPs are outside basemap bounds!")
+                print(f"    Basemap covers: lon [{basemap_bounds.left:.6f}, {basemap_bounds.right:.6f}], lat [{basemap_bounds.bottom:.6f}, {basemap_bounds.top:.6f}]")
+                print(f"    GCPs are at: lon [{gcp_min_lon:.6f}, {gcp_max_lon:.6f}], lat [{gcp_min_lat:.6f}, {gcp_max_lat:.6f}]")
+                print(f"    The basemap may show empty/gray area where GCPs are located")
+        
+        # Debug output
+        print(f"\n[DEBUG] Visualization debug info:")
+        print(f"  Original GCPs: {len(original_gcps) if original_gcps else 0}")
+        print(f"  Filtered GCPs: {len(gcps)}")
+        print(f"  GCP coordinates collected: {len(gcp_lons)} lons, {len(gcp_lats)} lats")
+        if gcp_lons and gcp_lats:
+            print(f"  GCP lon range: {min(gcp_lons):.6f} to {max(gcp_lons):.6f}")
+            print(f"  GCP lat range: {min(gcp_lats):.6f} to {max(gcp_lats):.6f}")
+            print(f"  Basemap bounds: lon [{basemap_bounds.left:.6f}, {basemap_bounds.right:.6f}], lat [{basemap_bounds.bottom:.6f}, {basemap_bounds.top:.6f}]")
+            print(f"  Plot limits: lon [{min_lon:.6f}, {max_lon:.6f}], lat [{min_lat:.6f}, {max_lat:.6f}]")
+        
+        # Draw yellow bounding box around all GCPs (minimum bounding box)
+        if gcp_lons and gcp_lats:
+            gcp_min_lon = min(gcp_lons)
+            gcp_max_lon = max(gcp_lons)
+            gcp_min_lat = min(gcp_lats)
+            gcp_max_lat = max(gcp_lats)
+            
+            print(f"  GCP bounding box: lon [{gcp_min_lon:.6f}, {gcp_max_lon:.6f}], lat [{gcp_min_lat:.6f}, {gcp_max_lat:.6f}]")
+            
+            # Add some padding (5% of the range)
+            lon_range = gcp_max_lon - gcp_min_lon
+            lat_range = gcp_max_lat - gcp_min_lat
+            padding_lon = max(lon_range * 0.05, 0.001)  # At least 0.001 degrees
+            padding_lat = max(lat_range * 0.05, 0.001)
+            
+            bbox_rect = mpatches.Rectangle(
+                (gcp_min_lon - padding_lon, gcp_min_lat - padding_lat),
+                (gcp_max_lon - gcp_min_lon) + 2 * padding_lon,
+                (gcp_max_lat - gcp_min_lat) + 2 * padding_lat,
+                linewidth=4,
+                edgecolor='yellow',
+                facecolor='none',
+                linestyle='--',
+                zorder=7,
+                alpha=0.9,
+                label='GCP Bounding Box'
+            )
+            ax.add_patch(bbox_rect)
+            print(f"  ✓ Yellow bounding box drawn")
+        else:
+            print(f"  ⚠️  No GCP coordinates to draw bounding box")
+        
+        # Create a set of filtered GCP IDs for comparison
+        filtered_gcp_ids = set()
         if gcps:
-            gcp_points = []
+            for gcp in gcps:
+                gcp_id = gcp.get('id', gcp.get('label'))
+                if gcp_id:
+                    filtered_gcp_ids.add(gcp_id)
+                else:
+                    # Use location as fallback
+                    lat = gcp.get('lat', gcp.get('latitude'))
+                    lon = gcp.get('lon', gcp.get('longitude'))
+                    if lat is not None and lon is not None:
+                        filtered_gcp_ids.add((round(lat, 6), round(lon, 6)))
+        
+        # Plot original GCPs first (if provided)
+        if original_gcps:
+            original_lons = []
+            original_lats = []
+            for gcp in original_gcps:
+                if 'lat' in gcp and 'lon' in gcp:
+                    original_lons.append(gcp['lon'])
+                    original_lats.append(gcp['lat'])
+            
+            if original_lons and original_lats:
+                print(f"  [DEBUG] Plotting {len(original_lons)} original GCPs")
+                print(f"    Sample coordinates: ({original_lons[0]:.6f}, {original_lats[0]:.6f})")
+                # Plot original GCPs as very large filled circles with outline
+                # Use even larger markers and ensure they're on top
+                # White background circle for visibility (largest, behind)
+                ax.scatter(original_lons, original_lats,
+                          s=3000,  # Very large marker size
+                          c='white',
+                          marker='o',
+                          edgecolors='none',
+                          zorder=15,
+                          alpha=1.0)
+                # Orange outline circle (thick border)
+                ax.scatter(original_lons, original_lats, 
+                          s=3000,
+                          c='none',
+                          edgecolors=original_color,
+                          linewidths=6,
+                          marker='o',
+                          label=original_label,
+                          zorder=16,
+                          alpha=1.0)
+                # Inner filled circle
+                ax.scatter(original_lons, original_lats,
+                          s=2000,
+                          c=original_color,
+                          marker='o',
+                          edgecolors='white',
+                          linewidths=3,
+                          zorder=17,
+                          alpha=0.8)
+                print(f"    ✓ Original GCPs plotted with size 3000")
+            else:
+                print(f"  [DEBUG] No valid original GCP coordinates found")
+        
+        # Plot filtered GCPs
+        if gcps:
+            filtered_lons = []
+            filtered_lats = []
+            filtered_ids = []
             for gcp in gcps:
                 if 'lat' in gcp and 'lon' in gcp:
-                    gcp_points.append(Point(gcp['lon'], gcp['lat']))
+                    filtered_lons.append(gcp['lon'])
+                    filtered_lats.append(gcp['lat'])
+                    filtered_ids.append(gcp.get('id', gcp.get('label', '')))
             
-            if gcp_points:
-                gcp_gdf = gpd.GeoDataFrame(
-                    {'geometry': gcp_points},
-                    crs='EPSG:4326'
-                )
+            if filtered_lons and filtered_lats:
+                print(f"  [DEBUG] Plotting {len(filtered_lons)} filtered GCPs")
+                print(f"    Sample coordinates: ({filtered_lons[0]:.6f}, {filtered_lats[0]:.6f})")
+                # Plot filtered GCPs as smaller but visible X markers with filled circle background
+                # White background circle for visibility (behind)
+                ax.scatter(filtered_lons, filtered_lats,
+                          s=400,  # Smaller but visible marker size
+                          c='white',
+                          marker='o',
+                          edgecolors='black',
+                          linewidths=1.5,
+                          zorder=18,
+                          alpha=0.9)
+                # Red X marker (on top)
+                ax.scatter(filtered_lons, filtered_lats,
+                          s=400,
+                          c=filtered_color,
+                          marker='x',
+                          linewidths=3,
+                          label=filtered_label,
+                          zorder=20,
+                          alpha=1.0)
+                # White X outline for contrast (behind red X)
+                ax.scatter(filtered_lons, filtered_lats,
+                          s=400,
+                          c='white',
+                          marker='x',
+                          linewidths=4,
+                          zorder=19,
+                          alpha=0.9)
                 
-                # Plot GCPs
-                gcp_gdf.plot(ax=ax, color='red', markersize=50, marker='x', 
-                            linewidth=2, label='GCPs', zorder=10)
-                
-                # Add labels with GCP IDs if available
-                for idx, gcp in enumerate(gcps):
-                    if 'lat' in gcp and 'lon' in gcp and 'id' in gcp:
+                # Add labels with GCP IDs if available (only for filtered GCPs)
+                for idx, (lon, lat, gcp_id) in enumerate(zip(filtered_lons, filtered_lats, filtered_ids)):
+                    if gcp_id:
                         ax.annotate(
-                            gcp['id'],
-                            (gcp['lon'], gcp['lat']),
-                            xytext=(5, 5),
+                            gcp_id,
+                            (lon, lat),
+                            xytext=(8, 8),
                             textcoords='offset points',
-                            fontsize=8,
+                            fontsize=10,
                             color='yellow',
                             weight='bold',
-                            bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7)
+                            bbox=dict(boxstyle='round,pad=0.5', facecolor='black', alpha=0.8, edgecolor='white', linewidth=1.5)
                         )
+                print(f"    ✓ Filtered GCPs plotted")
+            else:
+                print(f"  [DEBUG] No valid filtered GCP coordinates found")
         
-        # Set limits to bounding box
-        ax.set_xlim(min_lon, max_lon)
-        ax.set_ylim(min_lat, max_lat)
+        # Set plot limits based on GCP bounding box (if available), otherwise use search bbox
+        # But ensure basemap area is also visible if it overlaps
+        if gcp_lons and gcp_lats:
+            # Use GCP bounding box with padding
+            gcp_min_lon = min(gcp_lons)
+            gcp_max_lon = max(gcp_lons)
+            gcp_min_lat = min(gcp_lats)
+            gcp_max_lat = max(gcp_lats)
+            
+            # Add padding (10% of range, minimum 0.01 degrees)
+            lon_range = gcp_max_lon - gcp_min_lon
+            lat_range = gcp_max_lat - gcp_min_lat
+            padding_lon = max(lon_range * 0.1, 0.01)
+            padding_lat = max(lat_range * 0.1, 0.01)
+            
+            plot_min_lon = gcp_min_lon - padding_lon
+            plot_max_lon = gcp_max_lon + padding_lon
+            plot_min_lat = gcp_min_lat - padding_lat
+            plot_max_lat = gcp_max_lat + padding_lat
+            
+            # If basemap overlaps with GCP area, include basemap bounds in plot limits
+            # This ensures the basemap is visible
+            basemap_overlaps = not (basemap_bounds.right < plot_min_lon or basemap_bounds.left > plot_max_lon or
+                                   basemap_bounds.top < plot_min_lat or basemap_bounds.bottom > plot_max_lat)
+            
+            if basemap_overlaps:
+                # Expand plot limits to include basemap area
+                plot_min_lon = min(plot_min_lon, basemap_bounds.left)
+                plot_max_lon = max(plot_max_lon, basemap_bounds.right)
+                plot_min_lat = min(plot_min_lat, basemap_bounds.bottom)
+                plot_max_lat = max(plot_max_lat, basemap_bounds.top)
+                print(f"  [DEBUG] Basemap overlaps with GCP area, including basemap in plot limits")
+            
+            print(f"  [DEBUG] Setting plot limits to: lon [{plot_min_lon:.6f}, {plot_max_lon:.6f}], lat [{plot_min_lat:.6f}, {plot_max_lat:.6f}]")
+        else:
+            # Fall back to search bbox
+            plot_min_lon = min_lon
+            plot_max_lon = max_lon
+            plot_min_lat = min_lat
+            plot_max_lat = max_lat
+            print(f"  [DEBUG] No GCPs found, using search bbox for plot limits")
+        
+        ax.set_xlim(plot_min_lon, plot_max_lon)
+        ax.set_ylim(plot_min_lat, plot_max_lat)
         
         ax.set_xlabel('Longitude')
         ax.set_ylabel('Latitude')
         ax.set_title(title)
-        ax.legend()
+        ax.legend(loc='upper right')
         ax.grid(True, alpha=0.3)
         
         plt.tight_layout()
